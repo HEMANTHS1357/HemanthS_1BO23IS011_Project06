@@ -1,6 +1,9 @@
 import streamlit as st
 import numpy as np
-import pickle
+import pandas as pd
+from sklearn.decomposition import PCA
+from sklearn.neighbors import NearestCentroid
+from sklearn.preprocessing import StandardScaler
 
 # Page config
 st.set_page_config(
@@ -9,10 +12,28 @@ st.set_page_config(
     layout="centered"
 )
 
-# Load saved model, scaler, pca
-model = pickle.load(open('model.pkl', 'rb'))
-scaler = pickle.load(open('scaler.pkl', 'rb'))
-pca = pickle.load(open('pca.pkl', 'rb'))
+# Train model directly
+@st.cache_resource
+def train_model():
+    df = pd.read_csv('data/heart.csv')
+    df.fillna(df.mean(numeric_only=True), inplace=True)
+    df['target'] = df['target'].apply(lambda x: 1 if x > 0 else 0)
+
+    X = df.drop('target', axis=1)
+    y = df['target']
+
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    pca = PCA(n_components=2)
+    X_pca = pca.fit_transform(X_scaled)
+
+    model = NearestCentroid()
+    model.fit(X_pca, y)
+
+    return model, scaler, pca
+
+model, scaler, pca = train_model()
 
 # Header
 st.markdown("""
@@ -21,7 +42,6 @@ st.markdown("""
     <hr>
 """, unsafe_allow_html=True)
 
-# Input form in 2 columns
 st.subheader("🧾 Patient Details")
 
 col1, col2 = st.columns(2)
@@ -45,7 +65,6 @@ with col2:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Predict button
 col_btn = st.columns([1, 2, 1])
 with col_btn[1]:
     predict_btn = st.button("🔍 Predict Risk", use_container_width=True)
@@ -78,6 +97,5 @@ if predict_btn:
     st.markdown("<br>", unsafe_allow_html=True)
     st.info("⚠️ This tool is for assistive purposes only. Always consult a qualified medical professional.")
 
-# Footer
 st.markdown("<hr>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center; color:gray;'>Built by HEMANTH S | ML Project</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:gray;'>Built by HEMANTH S | VTU - CSE (ISE) | ML Project</p>", unsafe_allow_html=True)
